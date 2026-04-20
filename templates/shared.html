@@ -1,0 +1,139 @@
+<!-- CloudVault - Shared File Access Page -->
+<!-- Guest access page for shared files with password protection -->
+{% extends "base.html" %}
+{% block title %}Shared File — CloudVault{% endblock %}
+
+{% block extra_css %}
+<style>
+    body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #43a047, #1b5e20); }
+    .content { width: 100%; max-width: 480px; }
+    .share-card {
+        background: white;
+        border-radius: 16px;
+        padding: 36px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        text-align: center;
+    }
+    .share-icon { font-size: 3rem; margin-bottom: 16px; }
+    .share-card h2 { color: #333; margin-bottom: 8px; font-size: 1.3rem; }
+    .share-card .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 24px; }
+    .file-details {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 18px;
+        margin-bottom: 20px;
+        text-align: left;
+    }
+    .file-details .row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        font-size: 0.88rem;
+    }
+    .file-details .row .label { color: #888; }
+    .file-details .row .value { color: #333; font-weight: 600; }
+    .download-btn {
+        display: block;
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #1a73e8, #0d47a1);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+    .download-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(26,115,232,0.4); }
+    .error-msg {
+        background: #fff5f5;
+        color: #e53935;
+        padding: 14px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 0.9rem;
+    }
+    .encrypted-badge {
+        display: inline-block;
+        background: #e8f5e9;
+        color: #2e7d32;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-top: 14px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="share-card">
+    <div class="share-icon">&#128279;&#128274;</div>
+    <h2>Shared File</h2>
+    <p class="subtitle">Someone shared an encrypted file with you</p>
+
+    {% if error %}
+    <div class="error-msg">&#9888; {{ error }}</div>
+    <a href="/" class="btn btn-secondary" style="margin-top:10px;">Go to CloudVault</a>
+
+    {% elif needs_password %}
+    <div class="file-details">
+        <div class="row">
+            <span class="label">File</span>
+            <span class="value">{{ filename }}</span>
+        </div>
+        <div class="row">
+            <span class="label">Size</span>
+            <span class="value">{{ (file_size / 1024)|round(1) }} KB</span>
+        </div>
+    </div>
+    <p style="color:#e65100; font-size:0.88rem; margin-bottom:16px;">&#128274; This file is password protected</p>
+
+    {% if error %}
+    <div class="error-msg">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('share.access_share', token=token) }}">
+        <input type="hidden" name="action" value="download">
+        <div class="form-group" style="text-align:left;">
+            <label for="share_password">Enter Password</label>
+            <input type="password" id="share_password" name="share_password" placeholder="Share password" required>
+        </div>
+        <button type="submit" class="download-btn">&#128275; Unlock & Download</button>
+    </form>
+
+    {% elif file_info %}
+    <div class="file-details">
+        <div class="row">
+            <span class="label">File Name</span>
+            <span class="value">{{ file_info.filename }}</span>
+        </div>
+        <div class="row">
+            <span class="label">Size</span>
+            <span class="value">{{ (file_info.file_size / 1024)|round(1) }} KB</span>
+        </div>
+        <div class="row">
+            <span class="label">Type</span>
+            <span class="value">{{ file_info.mime_type or 'Unknown' }}</span>
+        </div>
+        <div class="row">
+            <span class="label">Expires In</span>
+            <span class="value">{{ hours_left }} hours</span>
+        </div>
+        <div class="row">
+            <span class="label">Downloads Left</span>
+            <span class="value">{{ downloads_left }}</span>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('share.access_share', token=token) }}">
+        <input type="hidden" name="action" value="download">
+        <button type="submit" class="download-btn">&#128229; Decrypt & Download</button>
+    </form>
+
+    <span class="encrypted-badge">&#128274; AES-256-GCM Encrypted • Secure Transfer</span>
+
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,218 @@
+<!-- CloudVault - Admin Panel -->
+<!-- System administration with user management and audit logs -->
+{% extends "base.html" %}
+{% block title %}Admin Panel — CloudVault{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .stat-card .number { font-size: 2rem; font-weight: 700; color: #1a73e8; }
+    .stat-card .label { font-size: 0.82rem; color: #888; margin-top: 4px; }
+    .stat-card.danger .number { color: #dc3545; }
+    .tab-bar { display: flex; gap: 0; margin-bottom: 20px; }
+    .tab-bar a {
+        padding: 10px 20px;
+        background: white;
+        text-decoration: none;
+        color: #666;
+        font-weight: 600;
+        font-size: 0.88rem;
+        border-bottom: 3px solid transparent;
+        transition: 0.2s;
+    }
+    .tab-bar a:hover, .tab-bar a.active {
+        color: #1a73e8;
+        border-bottom-color: #1a73e8;
+    }
+    .action-form { display: inline; }
+    .log-action { font-weight: 600; }
+    .log-action.login_success { color: #28a745; }
+    .log-action.login_failed { color: #dc3545; }
+    .log-action.file_upload { color: #1a73e8; }
+    .log-action.file_download { color: #17a2b8; }
+    .log-action.file_delete { color: #dc3545; }
+    .log-action.share_created { color: #6f42c1; }
+    .log-action.register { color: #00bfa5; }
+    .log-action.account_locked { color: #e65100; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom:20px;">&#128737; Admin Panel</h2>
+
+<div class="tab-bar">
+    <a href="{{ url_for('admin.panel') }}" class="{% if not show_logs %}active{% endif %}">&#128100; Users</a>
+    <a href="{{ url_for('admin.audit_logs') }}" class="{% if show_logs %}active{% endif %}">&#128203; Audit Logs</a>
+</div>
+
+{% if not show_logs %}
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="number">{{ total_users }}</div>
+        <div class="label">Total Users</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ total_files }}</div>
+        <div class="label">Encrypted Files</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ total_storage }} MB</div>
+        <div class="label">Storage Used</div>
+    </div>
+    <div class="stat-card danger">
+        <div class="number">{{ locked_accounts }}</div>
+        <div class="label">Locked Accounts</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>&#128100; User Management</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Storage</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td><strong>{{ user.username }}</strong></td>
+                <td>{{ user.email }}</td>
+                <td>
+                    <span class="badge badge-{{ user.role }}">{{ user.role }}</span>
+                </td>
+                <td>{{ (user.storage_used / 1048576)|round(1) }} MB</td>
+                <td>
+                    {% if user.is_locked %}
+                    <span class="badge badge-locked">&#128274; Locked</span>
+                    {% else %}
+                    <span class="badge badge-active">&#9989; Active</span>
+                    {% endif %}
+                </td>
+                <td>{{ user.created_at }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('admin.lock_user', user_id=user.id) }}" class="action-form">
+                        {% if user.is_locked %}
+                        <button type="submit" class="btn btn-success btn-sm">&#128275; Unlock</button>
+                        {% else %}
+                        <button type="submit" class="btn btn-danger btn-sm">&#128274; Lock</button>
+                        {% endif %}
+                    </form>
+
+                    <form method="POST" action="{{ url_for('admin.change_role', user_id=user.id) }}" class="action-form">
+                        {% if user.role == 'user' %}
+                        <input type="hidden" name="role" value="admin">
+                        <button type="submit" class="btn btn-primary btn-sm">&#11014; Admin</button>
+                        {% else %}
+                        <input type="hidden" name="role" value="user">
+                        <button type="submit" class="btn btn-secondary btn-sm">&#11015; User</button>
+                        {% endif %}
+                    </form>
+
+                    <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}" class="action-form" onsubmit="return confirm('Delete this user and all their data?');">
+                        <button type="submit" class="btn btn-danger btn-sm">&#128465; Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h3>&#128203; Recent Security Events</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Resource</th>
+                <th>IP</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in recent_logs %}
+            <tr>
+                <td>{{ log.created_at }}</td>
+                <td>{{ log.username or 'System' }}</td>
+                <td><span class="log-action {{ log.action }}">{{ log.action }}</span></td>
+                <td>{{ log.resource or '-' }}</td>
+                <td>{{ log.ip_address or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% else %}
+
+<div class="card">
+    <h3>&#128203; Security Audit Logs</h3>
+    <form method="GET" action="{{ url_for('admin.audit_logs') }}" style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+        <input type="text" name="action" placeholder="Filter by action" value="{{ action_filter or '' }}" style="max-width:200px;">
+        <input type="text" name="user" placeholder="Filter by username" value="{{ user_filter or '' }}" style="max-width:200px;">
+        <button type="submit" class="btn btn-primary btn-sm">&#128270; Filter</button>
+        <a href="{{ url_for('admin.audit_logs') }}" class="btn btn-secondary btn-sm">Clear</a>
+    </form>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Time</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Resource</th>
+                <th>IP Address</th>
+                <th>User Agent</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.id }}</td>
+                <td>{{ log.created_at }}</td>
+                <td>{{ log.username or 'Unknown' }}</td>
+                <td><span class="log-action {{ log.action }}">{{ log.action }}</span></td>
+                <td>{{ log.resource or '-' }}</td>
+                <td>{{ log.ip_address or '-' }}</td>
+                <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ log.user_agent or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="margin-top:16px; text-align:center;">
+        {% if page > 1 %}
+        <a href="{{ url_for('admin.audit_logs', page=page-1, action=action_filter, user=user_filter) }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="margin:0 12px; color:#888;">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="{{ url_for('admin.audit_logs', page=page+1, action=action_filter, user=user_filter) }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% endif %}
+{% endblock %}

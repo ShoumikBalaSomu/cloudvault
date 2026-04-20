@@ -1,0 +1,285 @@
+<!-- CloudVault - Dashboard / File Manager -->
+<!-- Main file management interface with upload, folders, sharing -->
+{% extends "base.html" %}
+{% block title %}My Files — CloudVault{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .dashboard-header h2 { color: #333; font-size: 1.4rem; }
+    .storage-bar {
+        background: #e9ecef;
+        border-radius: 20px;
+        height: 8px;
+        width: 200px;
+        overflow: hidden;
+    }
+    .storage-fill {
+        height: 100%;
+        border-radius: 20px;
+        background: linear-gradient(90deg, #1a73e8, #00bfa5);
+        transition: width 0.3s;
+    }
+    .storage-info { font-size: 0.8rem; color: #888; margin-top: 4px; }
+    .action-bar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    .breadcrumbs {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 16px;
+        font-size: 0.88rem;
+    }
+    .breadcrumbs a { color: #1a73e8; text-decoration: none; }
+    .breadcrumbs a:hover { text-decoration: underline; }
+    .breadcrumbs .sep { color: #ccc; }
+    .file-list { margin-top: 10px; }
+    .file-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.15s;
+    }
+    .file-row:hover { background: #f8f9ff; }
+    .file-info { display: flex; align-items: center; gap: 12px; flex: 1; }
+    .file-icon { font-size: 1.6rem; }
+    .file-name { font-weight: 600; color: #333; font-size: 0.92rem; }
+    .file-meta { font-size: 0.78rem; color: #999; margin-top: 2px; }
+    .file-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #aaa;
+    }
+    .empty-state .icon { font-size: 4rem; margin-bottom: 16px; }
+    .empty-state h3 { color: #666; margin-bottom: 8px; }
+    .upload-area {
+        border: 2px dashed #ccc;
+        border-radius: 12px;
+        padding: 30px;
+        text-align: center;
+        transition: 0.3s;
+        cursor: pointer;
+    }
+    .upload-area:hover { border-color: #1a73e8; background: #f8f9ff; }
+    .upload-area .icon { font-size: 2.5rem; margin-bottom: 10px; color: #1a73e8; }
+    .upload-area p { color: #888; font-size: 0.9rem; }
+    .share-link-display {
+        background: #f0f4ff;
+        border: 1px solid #d0d9ff;
+        border-radius: 8px;
+        padding: 10px;
+        word-break: break-all;
+        font-size: 0.82rem;
+        margin-top: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h2>&#128193; My Files</h2>
+        <div class="storage-info">
+            {{ storage_used }} MB / {{ storage_quota }} MB used ({{ storage_percent }}%)
+        </div>
+        <div class="storage-bar">
+            <div class="storage-fill" style="width: {{ storage_percent }}%"></div>
+        </div>
+    </div>
+    <div>
+        <button class="btn btn-primary" onclick="document.getElementById('uploadModal').classList.add('active')">&#128228; Upload File</button>
+        <button class="btn btn-success" onclick="document.getElementById('folderModal').classList.add('active')">&#128193; New Folder</button>
+    </div>
+</div>
+
+<div class="breadcrumbs">
+    <a href="{{ url_for('files.dashboard') }}">&#127968; Home</a>
+    {% for crumb in breadcrumbs %}
+    <span class="sep">/</span>
+    <a href="{{ url_for('files.dashboard', folder=crumb.id) }}">{{ crumb.name }}</a>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <div class="file-list">
+        {% if not folders and not files %}
+        <div class="empty-state">
+            <div class="icon">&#128193;</div>
+            <h3>No files yet</h3>
+            <p>Upload your first file or create a folder to get started.</p>
+        </div>
+        {% endif %}
+
+        {% for f in folders %}
+        <div class="file-row">
+            <div class="file-info">
+                <span class="file-icon">&#128193;</span>
+                <div>
+                    <a href="{{ url_for('files.dashboard', folder=f.id) }}" class="file-name" style="text-decoration:none;">{{ f.name }}</a>
+                    <div class="file-meta">Folder &bull; {{ f.created_at }}</div>
+                </div>
+            </div>
+            <div class="file-actions">
+                <form method="POST" action="{{ url_for('files.delete_folder', folder_id=f.id) }}" onsubmit="return confirm('Delete this folder?');">
+                    <button type="submit" class="btn btn-danger btn-sm">&#128465; Delete</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% for f in files %}
+        <div class="file-row">
+            <div class="file-info">
+                <span class="file-icon">
+                    {% if 'image' in (f.mime_type or '') %}&#128247;
+                    {% elif 'pdf' in (f.mime_type or '') %}&#128196;
+                    {% elif 'video' in (f.mime_type or '') %}&#127910;
+                    {% elif 'audio' in (f.mime_type or '') %}&#127925;
+                    {% elif 'zip' in (f.mime_type or '') or 'rar' in (f.mime_type or '') %}&#128230;
+                    {% else %}&#128196;{% endif %}
+                </span>
+                <div>
+                    <div class="file-name">{{ f.filename }}</div>
+                    <div class="file-meta">
+                        {{ (f.file_size / 1024)|round(1) }} KB &bull; {{ f.mime_type or 'Unknown' }} &bull; {{ f.created_at }}
+                        &bull; <span style="color:#00897b;">&#128274; AES-256 Encrypted</span>
+                    </div>
+                </div>
+            </div>
+            <div class="file-actions">
+                <a href="{{ url_for('files.download', file_id=f.id) }}" class="btn btn-primary btn-sm">&#128229; Download</a>
+
+                <button class="btn btn-success btn-sm" onclick="openShareModal('{{ f.id }}', '{{ f.filename }}')">&#128279; Share</button>
+
+                <button class="btn btn-secondary btn-sm" onclick="openRenameModal('{{ f.id }}', '{{ f.filename }}')">&#9998; Rename</button>
+
+                <form method="POST" action="{{ url_for('files.delete', file_id=f.id) }}" style="display:inline;" onsubmit="return confirm('Permanently delete this file? This cannot be undone.');">
+                    <button type="submit" class="btn btn-danger btn-sm">&#128465; Delete</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="modal-overlay" id="uploadModal">
+    <div class="modal">
+        <h3>&#128228; Upload File</h3>
+        <form method="POST" action="{{ url_for('files.upload') }}" enctype="multipart/form-data">
+            {% if folder %}
+            <input type="hidden" name="folder_id" value="{{ folder.id }}">
+            {% endif %}
+            <div class="upload-area" onclick="document.getElementById('fileInput').click();">
+                <div class="icon">&#128194;</div>
+                <p>Click to select a file</p>
+                <p style="font-size:0.78rem; color:#aaa; margin-top:6px;">Max file size: 100 MB</p>
+            </div>
+            <input type="file" id="fileInput" name="file" required style="display:none;" onchange="document.getElementById('selectedFile').textContent = this.files[0] ? this.files[0].name : 'No file selected';">
+            <p id="selectedFile" style="margin-top:10px; font-size:0.85rem; color:#666;">No file selected</p>
+            <div style="display:flex; gap:10px; margin-top:18px;">
+                <button type="submit" class="btn btn-primary">&#128274; Encrypt & Upload</button>
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('uploadModal').classList.remove('active')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="folderModal">
+    <div class="modal">
+        <h3>&#128193; Create New Folder</h3>
+        <form method="POST" action="{{ url_for('files.create_folder') }}">
+            {% if folder %}
+            <input type="hidden" name="parent_id" value="{{ folder.id }}">
+            {% endif %}
+            <div class="form-group">
+                <label for="folder_name">Folder Name</label>
+                <input type="text" id="folder_name" name="folder_name" placeholder="Enter folder name" required>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button type="submit" class="btn btn-success">Create Folder</button>
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('folderModal').classList.remove('active')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="shareModal">
+    <div class="modal">
+        <h3>&#128279; Share File</h3>
+        <form method="POST" id="shareForm">
+            <p style="margin-bottom:14px; font-size:0.88rem; color:#666;">
+                Sharing: <strong id="shareFileName"></strong>
+            </p>
+            <div class="form-group">
+                <label for="expires_hours">Link Expires After (hours)</label>
+                <input type="number" id="expires_hours" name="expires_hours" value="24" min="1" max="720">
+            </div>
+            <div class="form-group">
+                <label for="max_downloads">Max Downloads (-1 for unlimited)</label>
+                <input type="number" id="max_downloads" name="max_downloads" value="-1" min="-1">
+            </div>
+            <div class="form-group">
+                <label for="share_password">Password Protection (optional)</label>
+                <input type="password" id="share_password" name="share_password" placeholder="Leave empty for no password">
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button type="submit" class="btn btn-success">&#128279; Create Share Link</button>
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('shareModal').classList.remove('active')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="renameModal">
+    <div class="modal">
+        <h3>&#9998; Rename File</h3>
+        <form method="POST" id="renameForm">
+            <div class="form-group">
+                <label for="new_name">New Name</label>
+                <input type="text" id="new_name" name="new_name" required>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button type="submit" class="btn btn-primary">Rename</button>
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('renameModal').classList.remove('active')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openShareModal(fileId, fileName) {
+    document.getElementById('shareForm').action = '/api/share/create/' + fileId;
+    document.getElementById('shareFileName').textContent = fileName;
+    document.getElementById('shareModal').classList.add('active');
+}
+
+function openRenameModal(fileId, currentName) {
+    document.getElementById('renameForm').action = '/api/files/rename/' + fileId;
+    document.getElementById('new_name').value = currentName;
+    document.getElementById('renameModal').classList.add('active');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) overlay.classList.remove('active');
+    });
+});
+</script>
+{% endblock %}

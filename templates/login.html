@@ -1,0 +1,239 @@
+<!-- CloudVault - Login Page -->
+<!-- User authentication with brute-force protection display -->
+{% extends "base.html" %}
+{% block title %}Login — CloudVault{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        position: relative;
+        overflow: hidden;
+    }
+
+    body::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle at 30% 50%, rgba(26,115,232,0.08) 0%, transparent 50%),
+                    radial-gradient(circle at 70% 30%, rgba(0,191,165,0.06) 0%, transparent 50%);
+        animation: bgShift 12s ease-in-out infinite alternate;
+    }
+
+    @keyframes bgShift {
+        0% { transform: translate(0, 0); }
+        100% { transform: translate(-3%, 2%); }
+    }
+
+    .content {
+        width: 100%;
+        max-width: 440px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .login-card {
+        background: rgba(255,255,255,0.97);
+        border-radius: 20px;
+        padding: 44px 38px 36px;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05);
+    }
+
+    .login-header { text-align: center; margin-bottom: 32px; }
+
+    .login-header .logo {
+        width: 72px;
+        height: 72px;
+        background: linear-gradient(135deg, #1a73e8, #00bfa5);
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 14px;
+        font-size: 2rem;
+        color: white;
+        box-shadow: 0 8px 24px rgba(26,115,232,0.3);
+    }
+
+    .login-header h1 { font-size: 1.6rem; color: #1a1a2e; font-weight: 700; }
+    .login-header p { color: #888; font-size: 0.88rem; margin-top: 6px; }
+
+    .form-group { margin-bottom: 18px; position: relative; }
+
+    .form-group label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .form-group .input-wrap { position: relative; }
+
+    .form-group .input-wrap .icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1rem;
+        color: #aaa;
+        pointer-events: none;
+    }
+
+    .form-group input {
+        padding: 12px 14px 12px 42px;
+        border: 2px solid #e8e8e8;
+        border-radius: 10px;
+        font-size: 0.92rem;
+        transition: all 0.25s;
+        background: #fafafa;
+    }
+
+    .form-group input:focus {
+        border-color: #1a73e8;
+        background: white;
+        box-shadow: 0 0 0 4px rgba(26,115,232,0.1);
+    }
+
+    .login-btn {
+        width: 100%;
+        padding: 13px;
+        background: linear-gradient(135deg, #1a73e8, #1557b0);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s;
+        letter-spacing: 0.3px;
+        margin-top: 6px;
+    }
+
+    .login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(26,115,232,0.4);
+        background: linear-gradient(135deg, #1557b0, #0d47a1);
+    }
+
+    .login-btn:active { transform: translateY(0); }
+
+    .divider {
+        display: flex;
+        align-items: center;
+        margin: 24px 0;
+        gap: 12px;
+    }
+
+    .divider::before, .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #e0e0e0;
+    }
+
+    .divider span { font-size: 0.78rem; color: #aaa; white-space: nowrap; }
+
+    .register-link {
+        text-align: center;
+        color: #888;
+        font-size: 0.88rem;
+    }
+
+    .register-link a {
+        color: #1a73e8;
+        text-decoration: none;
+        font-weight: 700;
+    }
+
+    .register-link a:hover { text-decoration: underline; }
+
+    .security-badges {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+
+    .sec-badge {
+        background: #f0f4ff;
+        border: 1px solid #d6e2ff;
+        border-radius: 20px;
+        padding: 5px 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #4a6fa5;
+        white-space: nowrap;
+    }
+
+    .page-footer {
+        text-align: center;
+        margin-top: 24px;
+        color: rgba(255,255,255,0.35);
+        font-size: 0.75rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .flash-messages {
+        position: relative;
+        z-index: 2;
+        max-width: 440px;
+    }
+
+    .footer { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-card">
+    <div class="login-header">
+        <div class="logo">&#9729;</div>
+        <h1>Welcome Back</h1>
+        <p>Sign in to your CloudVault account</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.login') }}">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <div class="input-wrap">
+                <span class="icon">&#128100;</span>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required autocomplete="username">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-wrap">
+                <span class="icon">&#128274;</span>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+            </div>
+        </div>
+        <button type="submit" class="login-btn">Sign In &#10132;</button>
+    </form>
+
+    <div class="divider"><span>New to CloudVault?</span></div>
+
+    <div class="register-link">
+        <a href="{{ url_for('auth.register_page') }}">Create a free account</a>
+    </div>
+
+    <div class="security-badges">
+        <span class="sec-badge">&#128274; AES-256</span>
+        <span class="sec-badge">&#128737; Brute-Force Guard</span>
+        <span class="sec-badge">&#128272; PBKDF2</span>
+    </div>
+</div>
+
+<div class="page-footer">
+    CloudVault &copy; 2026 &mdash; OS Security/Protection Project
+</div>
+{% endblock %}

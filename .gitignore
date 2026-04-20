@@ -1,0 +1,58 @@
+# CloudVault - Git Ignore File
+# Files and directories that should not be committed to version control
+
+# Python virtual environment
+venv/
+env/
+.env/
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# SQLite database (contains user data and credentials)
+*.db
+*.sqlite3
+
+# Encrypted file storage (contains user uploaded files)
+encrypted_storage/
+
+# Server logs
+*.log
+server.log
+nohup.out
+
+# Environment variables and secrets
+.env
+.env.local
+.env.production
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Distribution and packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Backup files
+backups/
+*.bak
+
+# SSL certificates (sensitive)
+nginx/ssl/
+*.pem
+*.key
+*.crt
